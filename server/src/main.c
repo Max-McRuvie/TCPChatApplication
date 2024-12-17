@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include "server_utils.h"
 
 #define PORT 8080
 #define BUFFER_SIZE 1024
@@ -8,74 +9,40 @@
 int main() {
     WSADATA wsa_data;
     SOCKET server_socket, client_socket;
-    struct sockaddr_in server, client_addr;
-    int addr_len = sizeof(client_addr);
-    char buffer[BUFFER_SIZE];
+    struct sockaddr_in client_addr;
 
     // Initialize Winsock
-    if (WSAStartup(MAKEWORD(2, 2), &wsa_data) != 0) {
-        printf("Failed to initialize Winsock. Error Code: %d\n", WSAGetLastError());
+    if (initialize_winsock(&wsa_data) != 0) {
+        printf("Winsock initialization failed.\n");
         return EXIT_FAILURE;
     }
 
-    // Create socket
-    server_socket = socket(AF_INET, SOCK_STREAM, 0);
+    // Create and bind server socket
+    server_socket = create_server_socket(PORT);
     if (server_socket == INVALID_SOCKET) {
-        printf("Failed to create socket. Error Code: %d\n", WSAGetLastError());
+        printf("Failed to create and bind server socket.\n");
         WSACleanup();
         return EXIT_FAILURE;
     }
 
-    // Setup server address struct
-    server.sin_family = AF_INET;
-    server.sin_addr.s_addr = inet_addr("127.0.0.1"); // localhost
-    server.sin_port = htons(PORT);
-
-    // Bind
-    if (bind(server_socket, (struct sockaddr*)&server, sizeof(server)) == SOCKET_ERROR) {
-        printf("Bind failed. Error Code: %d\n", WSAGetLastError());
-        closesocket(server_socket);
-        WSACleanup();
-        return EXIT_FAILURE;
-    }
-
-    // Listen
-    if (listen(server_socket, 3) == SOCKET_ERROR) {
+    // Listen for incoming connections
+    if (server_listen(server_socket, &client_addr) == SOCKET_ERROR) {
         printf("Listen failed. Error Code: %d\n", WSAGetLastError());
-        closesocket(server_socket);
-        WSACleanup();
+        cleanup(server_socket);
         return EXIT_FAILURE;
     }
 
-    printf("Waiting for connections...\n");
+    printf("Server is listening on port %d...\n", PORT);
 
-    // Accept a client socket
-    client_socket = accept(server_socket, (struct sockaddr*)&client_addr, &addr_len);
+    // Accept and handle a client connection
+    client_socket = accept_client(server_socket, (struct sockaddr*)&client_addr);
     if (client_socket == INVALID_SOCKET) {
         printf("Accept failed. Error Code: %d\n", WSAGetLastError());
-        closesocket(server_socket);
-        WSACleanup();
-        return EXIT_FAILURE;
+    } else {
+        handle_client(client_socket);
     }
 
-    while(1){
-        // Receive data from client
-        int bytesReceived = recv(client_socket, buffer, BUFFER_SIZE, 0);
-        if (bytesReceived > 0) {
-            buffer[bytesReceived] = '\0'; // Null-terminate the received data
-            printf("Received from client: %s\n", buffer);
-        }
-
-        // Send a response to client
-        const char *response = "Hello from server";
-        send(client_socket, response, strlen(response), 0);
-
-        Sleep(500);
-    }
-
-    // Cleanup
-    closesocket(client_socket);
-    closesocket(server_socket);
-    WSACleanup();
+    // Cleanup server resources
+    cleanup(server_socket);
     return EXIT_SUCCESS;
 }
