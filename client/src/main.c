@@ -1,43 +1,39 @@
 #include <stdio.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include "client_utils.h"
 
-#define PORT 8080
+#define DEFAULT_PORT 8080
 #define BUFFER_SIZE 1024
 
 int main(){
     WSADATA wsa_data;
     SOCKET client_socket;
     struct sockaddr_in server_addr;
+    const char *ip_address = "127.0.0.1";
     char buffer[BUFFER_SIZE];
 
     // Initialize Winsock
-    if (WSAStartup(MAKEWORD(2, 2), &wsa_data) != 0) {
-        printf("Failed to initialize Winsock. Error Code: %d\n", WSAGetLastError());
+    if (initialize_winsock(&wsa_data) != 0) {
+        printf("Winsock initialization failed.\n");
         return EXIT_FAILURE;
     }
 
     // Create socket
-    client_socket = socket(AF_INET, SOCK_STREAM, 0);
+    client_socket = create_client_socket();
     if (client_socket == INVALID_SOCKET) {
         printf("Failed to create socket. Error Code: %d\n", WSAGetLastError());
         WSACleanup();
         return EXIT_FAILURE;
     }
 
-    // Setup server address struct
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(PORT);
-    server_addr.sin_addr.s_addr = inet_addr("127.0.0.1"); // Change this if the server is on a different machine
-
     // Connect to server
-    if (connect(client_socket, (struct sockaddr*)&server_addr, sizeof(server_addr)) == SOCKET_ERROR) {
-        printf("Connection failed. Error Code: %d\n", WSAGetLastError());
-        closesocket(client_socket);
-        WSACleanup();
+    if(connect_to_server(client_socket, ip_address, DEFAULT_PORT) != 0){
+        cleanup(client_socket);
         return EXIT_FAILURE;
     }
     
+    // Communication loop
     while(1){
         // Send data to server
         const char *message = "Hello from client";
