@@ -15,8 +15,8 @@ CLIENT_BUILD_DIR = $(BUILD_DIR)/client
 SERVER_BUILD_DIR = $(BUILD_DIR)/server
 
 # Source and header files
-CLIENT_SRCS = $(CLIENT_DIR)/src/main.c 
-SERVER_SRCS = $(SERVER_DIR)/src/main.c 
+CLIENT_SRCS = $(CLIENT_DIR)/src/main.c $(CLIENT_DIR)/src/client_utils.c
+SERVER_SRCS = $(SERVER_DIR)/src/main.c $(SERVER_DIR)/src/server_utils.c 
 
 CLIENT_INCS = -I$(CLIENT_DIR)/inc -I$(SHARED_DIR)/inc
 SERVER_INCS = -I$(SERVER_DIR)/inc -I$(SHARED_DIR)/inc
